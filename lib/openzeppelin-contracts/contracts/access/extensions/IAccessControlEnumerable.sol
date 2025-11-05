@@ -1,7 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
-pragma solidity >=0.8.0 ^0.8.19;
-
+// SPDX-License-Identifier: MIT
 // OpenZeppelin Contracts (last updated v5.1.0) (access/extensions/IAccessControlEnumerable.sol)
+
+pragma solidity ^0.8.19;
 
 import {IAccessControl} from "../IAccessControl.sol";
 
@@ -29,4 +29,3 @@ interface IAccessControlEnumerable is IAccessControl {
      */
     function getRoleMemberCount(bytes32 role) external view returns (uint256);
 }
-

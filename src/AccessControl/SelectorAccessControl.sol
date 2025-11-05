@@ -1,9 +1,15 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-pragma solidity >=0.8.0 ^0.8.19;
 
-import {EVCUtil} from "../../lib/ethereum-vault-connector/src/utils/EVCUtil.sol";
-import {AccessControlEnumerableUpgradeable} from "../../lib/openzeppelin-contracts-upgradeable/contracts/access/extensions/AccessControlEnumerableUpgradeable.sol";
-import {ContextUpgradeable} from "../../lib/openzeppelin-contracts-upgradeable/contracts/utils/ContextUpgradeable.sol";
+pragma solidity ^0.8.19;
+
+import {ContextUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/utils/ContextUpgradeable.sol";
+import {AccessControlEnumerableUpgradeable} from
+    "lib/openzeppelin-contracts-upgradeable/contracts/access/extensions/AccessControlEnumerableUpgradeable.sol";
+import {
+    AccessControlUpgradeable,
+    IAccessControl
+} from "lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
+import {EVCUtil} from "lib/ethereum-vault-connector/src/utils/EVCUtil.sol";
 
 /// @title SelectorAccessControl
 /// @custom:security-contact security@euler.xyz
@@ -31,7 +37,7 @@ abstract contract SelectorAccessControl is EVCUtil, AccessControlEnumerableUpgra
     function grantRole(bytes32 role, address account)
         public
         virtual
-        override(AccessControlEnumerableUpgradeable)
+        override(AccessControlUpgradeable, IAccessControl)
         onlyEVCAccountOwner
     {
         super.grantRole(role, account);
@@ -41,7 +47,7 @@ abstract contract SelectorAccessControl is EVCUtil, AccessControlEnumerableUpgra
     function revokeRole(bytes32 role, address account)
         public
         virtual
-        override(AccessControlEnumerableUpgradeable)
+        override(AccessControlUpgradeable, IAccessControl)
         onlyEVCAccountOwner
     {
         super.revokeRole(role, account);
@@ -51,7 +57,7 @@ abstract contract SelectorAccessControl is EVCUtil, AccessControlEnumerableUpgra
     function renounceRole(bytes32 role, address callerConfirmation)
         public
         virtual
-        override(AccessControlEnumerableUpgradeable)
+        override(AccessControlUpgradeable, IAccessControl)
         onlyEVCAccountOwner
     {
         super.renounceRole(role, callerConfirmation);
@@ -75,4 +81,3 @@ abstract contract SelectorAccessControl is EVCUtil, AccessControlEnumerableUpgra
         return EVCUtil._msgSender();
     }
 }
-

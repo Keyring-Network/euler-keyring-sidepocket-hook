@@ -1,9 +1,9 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
-pragma solidity >=0.8.0 ^0.8.19;
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Contracts (last updated v5.0.1) (utils/Context.sol)
+
+pragma solidity ^0.8.19;
 
 import {Initializable} from "../proxy/utils/Initializable.sol";
-
-// OpenZeppelin Contracts (last updated v5.0.1) (utils/Context.sol)
 
 /**
  * @dev Provides information about the current execution context, including the
@@ -32,4 +32,3 @@ abstract contract ContextUpgradeable is Initializable {
         return 0;
     }
 }
-

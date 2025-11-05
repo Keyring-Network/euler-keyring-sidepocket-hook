@@ -1,7 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
-pragma solidity >=0.8.0 ^0.8.19;
-
+// SPDX-License-Identifier: MIT
 // OpenZeppelin Contracts (last updated v5.0.0) (proxy/utils/Initializable.sol)
+
+pragma solidity ^0.8.19;
 
 /**
  * @dev This is a base contract to aid in writing upgradeable contracts, or any kind of contract that will be deployed
@@ -34,14 +34,14 @@ pragma solidity >=0.8.0 ^0.8.19;
  * possible by providing the encoded function call as the `_data` argument to {ERC1967Proxy-constructor}.
  *
  * CAUTION: When used with inheritance, manual care must be taken to not invoke a parent initializer twice, or to ensure
- * that all initializers are idempotent. This is not verified automatically as constructors are not in Solidity.
+ * that all initializers are idempotent. This is not verified automatically as constructors are by Solidity.
  *
  * [CAUTION]
  * ====
  * Avoid leaving a contract uninitialized.
  *
- * An uninitialized contract can be taken over by an attacker. This applies to both a proxy and an implementation
- * contract, and may impact the proxy. To prevent the implementation contract from being used, you should invoke
+ * An uninitialized contract can be taken over by an attacker. This applies to both a proxy and its implementation
+ * contract, which may impact the proxy. To prevent the implementation contract from being used, you should invoke
  * the {_disableInitializers} function in the constructor to automatically lock it when it is deployed:
  *
  * [.hljs-theme-light.nopadding]
@@ -226,4 +226,3 @@ abstract contract Initializable {
         }
     }
 }
-
