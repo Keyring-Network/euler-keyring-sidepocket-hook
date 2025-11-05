@@ -50,6 +50,9 @@ contract HookTargetAccessControlKeyringSidePocket is HookTargetAccessControlKeyr
     /// @param allowedAssetsForWithdrawal The maximum amount the user can withdraw.
     error WithdrawalAmountExceedsLimit(uint256 amount, uint256 allowedAssetsForWithdrawal);
 
+    /// @notice Thrown when attempting to transfer vault shares (transfers are disabled).
+    error Disallowed();
+
     /// @notice Initializes the side pocket contract with access control and vault configuration.
     /// @dev Sets up Keyring authentication and links to the target debt vault.
     /// @param _evc Address of the Ethereum Vault Connector.
