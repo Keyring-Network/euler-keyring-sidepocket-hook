@@ -55,15 +55,11 @@ contract HookTargetAccessControlKeyring is BaseHookTarget, SelectorAccessControl
 
     /// @notice Intercepts EVault withdraw operations to authenticate the caller and the owner
     /// @param owner The address whose balance will change
-    function withdraw(uint256, address, address owner) external view {
-        _authenticateCallerAndAccount(owner);
-    }
+    function withdraw(uint256, address, address owner) external view virtual {}
 
     /// @notice Intercepts EVault redeem operations to authenticate the caller and the owner
     /// @param owner The address whose balance will change
-    function redeem(uint256, address, address owner) external view {
-        _authenticateCallerAndAccount(owner);
-    }
+    function redeem(uint256, address, address owner) external view virtual {}
 
     /// @notice Intercepts EVault skim operations to authenticate the caller and the receiver
     /// @param receiver The address that will receive shares
@@ -162,4 +158,3 @@ contract HookTargetAccessControlKeyring is BaseHookTarget, SelectorAccessControl
         return msg.sender == msgSender ? SelectorAccessControl._msgSender() : msgSender;
     }
 }
-

@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-pragma solidity >=0.8.0 ^0.8.19;
 
-import {IHookTarget} from "../../lib/euler-vault-kit/src/interfaces/IHookTarget.sol";
+pragma solidity >=0.8.0;
+
 import {GenericFactory} from "../../lib/euler-vault-kit/src/GenericFactory/GenericFactory.sol";
+import {IHookTarget} from "../../lib/euler-vault-kit/src/interfaces/IHookTarget.sol";
 
 /// @title BaseHookTarget
 /// @custom:security-contact security@euler.xyz
@@ -39,4 +40,3 @@ abstract contract BaseHookTarget is IHookTarget {
         }
     }
 }
-

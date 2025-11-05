@@ -1,12 +1,13 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
-pragma solidity >=0.8.0 ^0.8.19;
-
+// SPDX-License-Identifier: MIT
 // OpenZeppelin Contracts (last updated v5.1.0) (access/extensions/AccessControlEnumerable.sol)
 
-import {Initializable} from "../../proxy/utils/Initializable.sol";
-import {IAccessControlEnumerable} from "../../../../../../../../../lib/openzeppelin-contracts/contracts/access/extensions/IAccessControlEnumerable.sol";
+pragma solidity ^0.8.19;
+
+import {IAccessControlEnumerable} from
+    "lib/openzeppelin-contracts/contracts/access/extensions/IAccessControlEnumerable.sol";
 import {AccessControlUpgradeable} from "../AccessControlUpgradeable.sol";
-import {EnumerableSet} from "../../../../../../../../../lib/openzeppelin-contracts/contracts/utils/structs/EnumerableSet.sol";
+import {EnumerableSet} from "lib/openzeppelin-contracts/contracts/utils/structs/EnumerableSet.sol";
+import {Initializable} from "../../proxy/utils/Initializable.sol";
 
 /**
  * @dev Extension of {AccessControl} that allows enumerating the members of each role.
@@ -107,4 +108,3 @@ abstract contract AccessControlEnumerableUpgradeable is
         return revoked;
     }
 }
-

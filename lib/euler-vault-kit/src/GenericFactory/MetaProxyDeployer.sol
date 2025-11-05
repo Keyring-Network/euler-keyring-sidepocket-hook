@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-pragma solidity >=0.8.0 ^0.8.19;
+
+pragma solidity ^0.8.19;
 
 /// @title MetaProxyDeployer
 /// @custom:security-contact security@euler.xyz
@@ -26,4 +27,3 @@ contract MetaProxyDeployer {
         if (addr == address(0)) revert E_DeploymentFailed();
     }
 }
-

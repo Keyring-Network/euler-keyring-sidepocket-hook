@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-pragma solidity >=0.8.0 ^0.8.19;
+
+pragma solidity >=0.8.0;
 
 /// @title IHookTarget
 /// @author Euler Labs (https://www.eulerlabs.com/)
@@ -11,4 +12,3 @@ interface IHookTarget {
     /// @return The bytes4 magic value (0x87439e04) that is the selector of this function
     function isHookTarget() external view returns (bytes4);
 }
-

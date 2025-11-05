@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
-pragma solidity >=0.8.0 ^0.8.19;
+// SPDX-License-Identifier: MIT
 
-import {ExecutionContext, EC} from "../ExecutionContext.sol";
+pragma solidity ^0.8.19;
+
 import {IEVC} from "../interfaces/IEthereumVaultConnector.sol";
+import {ExecutionContext, EC} from "../ExecutionContext.sol";
 
 /// @title EVCUtil
 /// @custom:security-contact security@euler.xyz
@@ -224,4 +225,3 @@ abstract contract EVCUtil {
         return msg.sender;
     }
 }
-

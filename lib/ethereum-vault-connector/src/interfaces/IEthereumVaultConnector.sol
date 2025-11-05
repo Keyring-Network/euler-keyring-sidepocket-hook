@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-pragma solidity >=0.8.0 ^0.8.19;
+
+pragma solidity >=0.8.0;
 
 /// @title IEVC
 /// @custom:security-contact security@euler.xyz
@@ -221,7 +222,7 @@ interface IEVC {
 
     /// @notice Disables a collateral for an account.
     /// @dev This function does not preserve the order of collaterals in the array obtained using the getCollaterals
-    /// function; the order may change. A collateral is a vault for which account's balances are under the control of
+    /// function; the order may change. A collateral is a vault for which account’s balances are under the control of
     /// the currently enabled controller vault. Only the owner or an operator of the account can call this function.
     /// Disabling a collateral might change the order of collaterals in the array obtained using getCollaterals
     /// function. Account status checks are performed.
@@ -231,7 +232,7 @@ interface IEVC {
 
     /// @notice Swaps the position of two collaterals so that they appear switched in the array of collaterals for a
     /// given account obtained by calling getCollaterals function.
-    /// @dev A collateral is a vault for which account's balances are under the control of the currently enabled
+    /// @dev A collateral is a vault for which account’s balances are under the control of the currently enabled
     /// controller vault. Only the owner or an operator of the account can call this function. The order of collaterals
     /// can be changed by specifying the indices of the two collaterals to be swapped. Indices are zero-based and must
     /// be in the range of 0 to the number of collaterals minus 1. index1 must be lower than index2. Account status
@@ -250,7 +251,7 @@ interface IEVC {
     function getControllers(address account) external view returns (address[] memory);
 
     /// @notice Returns whether a controller is enabled for an account.
-    /// @dev A controller is a vault that has been chosen for an account to have special control over account's
+    /// @dev A controller is a vault that has been chosen for an account to have special control over account’s
     /// balances in the enabled collaterals vaults.
     /// @param account The address of the account that is being checked.
     /// @param vault The address of the controller that is being checked.
@@ -258,7 +259,7 @@ interface IEVC {
     function isControllerEnabled(address account, address vault) external view returns (bool);
 
     /// @notice Enables a controller for an account.
-    /// @dev A controller is a vault that has been chosen for an account to have special control over account's
+    /// @dev A controller is a vault that has been chosen for an account to have special control over account’s
     /// balances in the enabled collaterals vaults. Only the owner or an operator of the account can call this function.
     /// Unless it's a duplicate, the controller is added to the end of the array. Transiently, there can be at most 10
     /// unique controllers enabled at a time, but at most one can be enabled after the outermost checks-deferrable
@@ -268,7 +269,7 @@ interface IEVC {
     function enableController(address account, address vault) external payable;
 
     /// @notice Disables a controller for an account.
-    /// @dev A controller is a vault that has been chosen for an account to have special control over account's
+    /// @dev A controller is a vault that has been chosen for an account to have special control over account’s
     /// balances in the enabled collaterals vaults. Only the vault itself can call this function. Disabling a controller
     /// might change the order of controllers in the array obtained using getControllers function. Account status checks
     /// are performed.
@@ -431,4 +432,3 @@ interface IEVC {
     /// @param account The address of the account to be checked.
     function requireAccountAndVaultStatusCheck(address account) external payable;
 }
-

@@ -1,12 +1,12 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
-pragma solidity >=0.8.0 ^0.8.19;
-
+// SPDX-License-Identifier: MIT
 // OpenZeppelin Contracts (last updated v5.0.0) (access/AccessControl.sol)
 
-import {Initializable} from "../proxy/utils/Initializable.sol";
+pragma solidity ^0.8.19;
+
+import {IAccessControl} from "../../../openzeppelin-contracts/contracts/access/IAccessControl.sol";
 import {ContextUpgradeable} from "../utils/ContextUpgradeable.sol";
-import {IAccessControl} from "../../../../../../../lib/openzeppelin-contracts/contracts/access/IAccessControl.sol";
 import {ERC165Upgradeable} from "../utils/introspection/ERC165Upgradeable.sol";
+import {Initializable} from "../proxy/utils/Initializable.sol";
 
 /**
  * @dev Contract module that allows children to implement role-based access
@@ -230,4 +230,3 @@ abstract contract AccessControlUpgradeable is Initializable, ContextUpgradeable,
         }
     }
 }
-

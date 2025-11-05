@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-pragma solidity >=0.8.0 ^0.8.19;
+
+pragma solidity ^0.8.19;
 
 type EC is uint256;
 
@@ -87,4 +88,3 @@ library ExecutionContext {
         result = EC.wrap(EC.unwrap(self) | SIMULATION_MASK);
     }
 }
-

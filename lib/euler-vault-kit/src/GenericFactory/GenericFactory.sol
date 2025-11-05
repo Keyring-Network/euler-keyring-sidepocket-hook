@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-pragma solidity >=0.8.0 ^0.8.19;
+
+pragma solidity ^0.8.19;
 
 import {BeaconProxy} from "./BeaconProxy.sol";
 import {MetaProxyDeployer} from "./MetaProxyDeployer.sol";
@@ -205,4 +206,3 @@ contract GenericFactory is MetaProxyDeployer {
         }
     }
 }
-
