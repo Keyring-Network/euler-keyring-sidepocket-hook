@@ -6,18 +6,15 @@ import {IEVault} from "../../lib/euler-vault-kit/src/interfaces/IEVault.sol";
 import {HookTargetAccessControlKeyring} from "./HookTargetAccessControlKeyring.sol";
 
 /// @title HookTargetAccessControlKeyringSidePocket.
-/// @author mgnfy-view.
-/// @notice Implements a side pocket mechanism for controlled withdrawals from an EVault.
-/// @dev Extends HookTargetAccessControlKeyring to add withdrawal segmentation functionality.
+/// @notice Manages withdrawal limits for vault positions using a cumulative liquidity index system.
+/// @dev Extends HookTargetAccessControlKeyring to add pro-rata withdrawal enforcement based on supplied assets.
 contract HookTargetAccessControlKeyringSidePocket is HookTargetAccessControlKeyring {
-    /// @notice Represents a withdrawal period with specific allocation rules.
-    /// @dev Each segment defines how much of the total supplied assets can be withdrawn.
-    /// @param index Sequential identifier for the withdrawal segment (starts at 1).
-    /// @param assetsAvailableForWithdrawal Total amount of assets available for withdrawal in this segment.
-    /// @param totalSuppliedAssets Total assets supplied across all users at segment creation.
-    struct WithdrawalSegment {
-        uint256 index;
+    /// @notice Configuration for tracking cumulative withdrawal availability.
+    /// @dev Used to calculate pro-rata withdrawal limits based on user's supplied assets.
+    struct CumulativeWithdrawalLiquidityIndex {
+        /// @notice Total assets available for withdrawal in the current period.
         uint256 assetsAvailableForWithdrawal;
+        /// @notice Total assets supplied by all users for proportional calculation.
         uint256 totalSuppliedAssets;
     }
 
@@ -26,24 +23,21 @@ contract HookTargetAccessControlKeyringSidePocket is HookTargetAccessControlKeyr
 
     /// @notice Current active withdrawal segment configuration.
     /// @dev Updated by admin when starting a new withdrawal period.
-    WithdrawalSegment public withdrawalSegment;
+    CumulativeWithdrawalLiquidityIndex public cumulativeWithdrawalLiquidityIndex;
 
-    /// @notice Tracks withdrawal allowances for each user in each segment.
-    /// @dev A value of type(uint256).max indicates the user has fully withdrawn for that segment.
-    mapping(address user => mapping(uint256 withdrawalSegment => uint256 withdrawableAmount)) public withdrawableAmounts;
+    /// @notice Tracks the total amount withdrawn by each user.
+    /// @dev Maps user address to their cumulative withdrawn amount.
+    mapping(address user => uint256 totalWithdrawnAmount) public userWithdrawnAmounts;
 
-    /// @notice Emitted when a new withdrawal segment is initiated.
-    /// @param withdrawalSegment The newly created withdrawal segment configuration.
-    event StartedNextWithdrawalSegment(WithdrawalSegment indexed withdrawalSegment);
+    /// @notice Emitted when the cumulative withdrawal liquidity index is updated.
+    /// @param assetsAvailableForWithdrawal The new total assets available for withdrawal.
+    /// @param totalSuppliedAssets The new total supplied assets for calculation.
+    event CumulativeWithdrawalLiquidityIndexSet(
+        uint256 indexed assetsAvailableForWithdrawal, uint256 indexed totalSuppliedAssets
+    );
 
     /// @notice Thrown when a required value is zero.
     error ValueZero();
-
-    /// @notice Thrown when attempting to withdraw before any segment has been started.
-    error WithdrawalSegmentZero();
-
-    /// @notice Thrown when a user attempts to withdraw again after exhausting their segment allocation.
-    error AlreadyWithdrawnThisSegment();
 
     /// @notice Thrown when withdrawal amount exceeds the user's allowed limit.
     /// @param amount The requested withdrawal amount.
@@ -72,22 +66,20 @@ contract HookTargetAccessControlKeyringSidePocket is HookTargetAccessControlKeyr
         targetDebtVault = IEVault(_targetDebtVault);
     }
 
-    /// @notice Initiates a new withdrawal segment with specified allocation parameters.
-    /// @dev Only callable by addresses with DEFAULT_ADMIN_ROLE.
-    /// @dev Increments the segment index and sets new withdrawal limits.
-    /// @param assetsAvailableForWithdrawal Total assets that can be withdrawn across all users in this segment.
-    /// @param totalSuppliedAssets Total assets supplied by all users (used for proportional calculations).
-    function startNextWithdrawalSegment(uint256 assetsAvailableForWithdrawal, uint256 totalSuppliedAssets)
+    /// @notice Sets the cumulative withdrawal liquidity index for the current withdrawal period.
+    /// @dev Can only be called by an address with DEFAULT_ADMIN_ROLE.
+    /// @param assetsAvailableForWithdrawal Total assets available for withdrawal in this period.
+    /// @param totalSuppliedAssets Total supplied assets used for pro-rata calculation.
+    function setCumulativeWithdrawalLiquidityIndex(uint256 assetsAvailableForWithdrawal, uint256 totalSuppliedAssets)
         external
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
         if (assetsAvailableForWithdrawal == 0 || totalSuppliedAssets == 0) revert ValueZero();
 
-        withdrawalSegment.index++;
-        withdrawalSegment.assetsAvailableForWithdrawal = assetsAvailableForWithdrawal;
-        withdrawalSegment.totalSuppliedAssets = totalSuppliedAssets;
+        cumulativeWithdrawalLiquidityIndex.assetsAvailableForWithdrawal = assetsAvailableForWithdrawal;
+        cumulativeWithdrawalLiquidityIndex.totalSuppliedAssets = totalSuppliedAssets;
 
-        emit StartedNextWithdrawalSegment(withdrawalSegment);
+        emit CumulativeWithdrawalLiquidityIndexSet(assetsAvailableForWithdrawal, totalSuppliedAssets);
     }
 
     /// @notice Intercepts EVault withdraw operations to enforce withdrawal limits and authenticate users.
@@ -103,8 +95,9 @@ contract HookTargetAccessControlKeyringSidePocket is HookTargetAccessControlKeyr
     /// @notice Intercepts EVault redeem operations to enforce withdrawal limits and authenticate users.
     /// @dev Hook function called before vault share redemption; converts shares to assets.
     /// @param shares The number of vault shares to redeem.
+    /// @param receiver The address that will receive the withdrawn assets.
     /// @param owner The address whose shares will be burned.
-    function redeem(uint256 shares, address, address owner) external override {
+    function redeem(uint256 shares, address receiver, address owner) external override {
         uint256 amount = targetDebtVault.convertToAssets(shares);
         _allowExit(owner, amount);
         _authenticateCallerAndAccount(owner);
@@ -113,56 +106,41 @@ contract HookTargetAccessControlKeyringSidePocket is HookTargetAccessControlKeyr
     /// @notice Disabled transfer function to prevent vault share transfers.
     /// @dev Always reverts to enforce non-transferability of vault positions.
     /// @return bool Never returns, always reverts.
-    function transfer(address to, uint256 amount) external returns (bool) {
+    function transfer(address, uint256) external returns (bool) {
         revert Disallowed();
     }
 
     /// @notice Disabled transferFrom function to prevent vault share transfers.
     /// @dev Always reverts to enforce non-transferability of vault positions.
     /// @return bool Never returns, always reverts.
-    function transferFrom(address from, address to, uint256 amount) external returns (bool) {
+    function transferFrom(address, address, uint256) external returns (bool) {
         revert Disallowed();
     }
 
     /// @notice Disabled transferFromMax function to prevent vault share transfers.
     /// @dev Always reverts to enforce non-transferability of vault positions.
-    /// @dev This function would typically transfer the maximum balance from an account.
     /// @return bool Never returns, always reverts.
-    function transferFromMax(address from, address to) external returns (bool) {
+    function transferFromMax(address, address) external returns (bool) {
         revert Disallowed();
     }
 
-    /// @notice Internal function to validate and track user withdrawal allowances.
-    /// @dev Calculates proportional withdrawal limit on first withdrawal in a segment.
-    /// @dev Uses type(uint256).max as a marker for users who have fully withdrawn.
+    /// @notice Validates and records a user's withdrawal against their allowed limit.
+    /// @dev Calculates pro-rata withdrawal allowance based on cumulative liquidity index.
+    /// Updates user's total withdrawn amount upon successful validation.
     /// @param user The address attempting to withdraw.
     /// @param amount The amount of assets to withdraw.
     function _allowExit(address user, uint256 amount) internal {
-        if (withdrawalSegment.index == 0) revert WithdrawalSegmentZero();
-        if (withdrawableAmounts[user][withdrawalSegment.index] == type(uint256).max) {
-            revert AlreadyWithdrawnThisSegment();
-        }
-
         uint256 assetsSupplied = targetDebtVault.convertToAssets(targetDebtVault.balanceOf(user));
-        uint256 allowedAssetsForWithdrawal = withdrawableAmounts[user][withdrawalSegment.index];
-
-        // Calculate proportional withdrawal limit on first withdrawal in this segment
-        if (withdrawableAmounts[user][withdrawalSegment.index] == 0) {
-            withdrawableAmounts[user][withdrawalSegment.index] = allowedAssetsForWithdrawal = (
-                assetsSupplied * withdrawalSegment.assetsAvailableForWithdrawal
-            ) / withdrawalSegment.totalSuppliedAssets;
-        }
+        uint256 totalWithdrawnAmount = userWithdrawnAmounts[user];
+        uint256 maxWithdrawableAssets = (
+            cumulativeWithdrawalLiquidityIndex.assetsAvailableForWithdrawal * (totalWithdrawnAmount + assetsSupplied)
+        ) / cumulativeWithdrawalLiquidityIndex.totalSuppliedAssets;
+        uint256 allowedAssetsForWithdrawal = maxWithdrawableAssets - totalWithdrawnAmount;
 
         if (amount > allowedAssetsForWithdrawal) {
             revert WithdrawalAmountExceedsLimit(amount, allowedAssetsForWithdrawal);
         }
 
-        // Deduct withdrawn amount from user's allowance
-        withdrawableAmounts[user][withdrawalSegment.index] -= amount;
-
-        // Mark as fully withdrawn if allowance is exhausted
-        if (withdrawableAmounts[user][withdrawalSegment.index] == 0) {
-            withdrawableAmounts[user][withdrawalSegment.index] = type(uint256).max;
-        }
+        userWithdrawnAmounts[user] += amount;
     }
 }
