@@ -6,6 +6,7 @@ import {IEVault} from "../../lib/euler-vault-kit/src/interfaces/IEVault.sol";
 import {HookTargetAccessControlKeyring} from "./HookTargetAccessControlKeyring.sol";
 
 /// @title HookTargetAccessControlKeyringSidePocket.
+/// @author mgnfy-view.
 /// @notice Manages withdrawal limits for vault positions using a cumulative liquidity index system.
 /// @dev Extends HookTargetAccessControlKeyring to add pro-rata withdrawal enforcement based on supplied assets.
 contract HookTargetAccessControlKeyringSidePocket is HookTargetAccessControlKeyring {
