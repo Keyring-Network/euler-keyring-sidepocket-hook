@@ -107,6 +107,28 @@ contract HookTargetAccessControlKeyringSidePocket is HookTargetAccessControlKeyr
         _authenticateCallerAndAccount(owner);
     }
 
+    /// @notice Disabled transfer function to prevent vault share transfers.
+    /// @dev Always reverts to enforce non-transferability of vault positions.
+    /// @return bool Never returns, always reverts.
+    function transfer(address to, uint256 amount) external returns (bool) {
+        revert Disallowed();
+    }
+
+    /// @notice Disabled transferFrom function to prevent vault share transfers.
+    /// @dev Always reverts to enforce non-transferability of vault positions.
+    /// @return bool Never returns, always reverts.
+    function transferFrom(address from, address to, uint256 amount) external returns (bool) {
+        revert Disallowed();
+    }
+
+    /// @notice Disabled transferFromMax function to prevent vault share transfers.
+    /// @dev Always reverts to enforce non-transferability of vault positions.
+    /// @dev This function would typically transfer the maximum balance from an account.
+    /// @return bool Never returns, always reverts.
+    function transferFromMax(address from, address to) external returns (bool) {
+        revert Disallowed();
+    }
+
     /// @notice Internal function to validate and track user withdrawal allowances.
     /// @dev Calculates proportional withdrawal limit on first withdrawal in a segment.
     /// @dev Uses type(uint256).max as a marker for users who have fully withdrawn.
