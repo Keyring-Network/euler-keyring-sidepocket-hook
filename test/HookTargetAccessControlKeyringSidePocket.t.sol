@@ -420,4 +420,44 @@ contract HookTargetAccessControlKeyringSidePocketTest is Test {
         vm.expectRevert();
         hookTarget.withdraw(100_000e18, user1, user1);
     }
+
+    function test_Withdraw_IndexNotInitialized_Reverts() public {
+        // Setup: User has balance
+        targetDebtVault.setBalance(user1, 1_000_000e18);
+        targetDebtVault.setTotalAssets(10_000_000e18);
+        targetDebtVault.setTotalSupply(10_000_000e18);
+
+        // Setup keyring credential
+        keyring.setCredential(user1, POLICY_ID, true);
+
+        // Attempt withdrawal without initializing index
+        // Index defaults to zero values, should revert
+        vm.prank(vault);
+        vm.expectRevert(HookTargetAccessControlKeyringSidePocket.IndexNotInitialized.selector);
+        hookTarget.withdraw(100_000e18, user1, user1);
+    }
+
+    function test_GetAssetsAvailableForWithdrawal_IndexNotInitialized_Reverts() public {
+        // Setup: User has balance
+        targetDebtVault.setBalance(user1, 1_000_000e18);
+
+        // Call view function without initializing index
+        vm.expectRevert(HookTargetAccessControlKeyringSidePocket.IndexNotInitialized.selector);
+        hookTarget.getAssetsAvailableForWithdrawal(user1);
+    }
+
+    function test_Redeem_IndexNotInitialized_Reverts() public {
+        // Setup: User has balance
+        targetDebtVault.setBalance(user1, 1_000_000e18);
+        targetDebtVault.setTotalAssets(10_000_000e18);
+        targetDebtVault.setTotalSupply(10_000_000e18);
+
+        // Setup keyring credential
+        keyring.setCredential(user1, POLICY_ID, true);
+
+        // Attempt redeem without initializing index
+        vm.prank(vault);
+        vm.expectRevert(HookTargetAccessControlKeyringSidePocket.IndexNotInitialized.selector);
+        hookTarget.redeem(100_000e18, user1, user1);
+    }
 }
