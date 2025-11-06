@@ -146,7 +146,6 @@ contract HookTargetAccessControlKeyringSidePocket is HookTargetAccessControlKeyr
     /// assuming their vault balance decreases proportionally with withdrawals.
     /// @param user The address to check withdrawal allowance for.
     /// @return The amount of assets the user can withdraw in the current period.
-    /// @custom:reverts Division by zero if totalSuppliedAssets is zero (uninitialized state).
     function getAssetsAvailableForWithdrawal(address user) public view returns (uint256) {
         uint256 assetsSupplied = targetDebtVault.convertToAssets(targetDebtVault.balanceOf(user));
         uint256 totalWithdrawnAmount = userWithdrawnAmounts[user];
