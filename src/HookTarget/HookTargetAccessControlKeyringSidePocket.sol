@@ -48,6 +48,9 @@ contract HookTargetAccessControlKeyringSidePocket is HookTargetAccessControlKeyr
     /// @notice Thrown when attempting to transfer vault shares (transfers are disabled).
     error Disallowed();
 
+    /// @notice Thrown when trying to withdraw before the cumulative withdrawal liquidity index is initialized.
+    error IndexNotInitialized();
+
     /// @notice Initializes the side pocket contract with access control and vault configuration.
     /// @dev Sets up Keyring authentication and links to the target debt vault.
     /// @param _evc Address of the Ethereum Vault Connector.
@@ -144,7 +147,12 @@ contract HookTargetAccessControlKeyringSidePocket is HookTargetAccessControlKeyr
     /// assuming their vault balance decreases proportionally with withdrawals.
     /// @param user The address to check withdrawal allowance for.
     /// @return The amount of assets the user can withdraw in the current period.
+    /// @dev Reverts if the cumulative withdrawal liquidity index has not been initialized.
     function getAssetsAvailableForWithdrawal(address user) public view returns (uint256) {
+        if (cumulativeWithdrawalLiquidityIndex.totalSuppliedAssets == 0) {
+            revert IndexNotInitialized();
+        }
+
         uint256 assetsSupplied = targetDebtVault.convertToAssets(targetDebtVault.balanceOf(user));
         uint256 totalWithdrawnAmount = userWithdrawnAmounts[user];
         uint256 maxWithdrawableAssets = (
