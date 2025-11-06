@@ -21,6 +21,10 @@ jobs:
         with:
           version: stable
 
+      - name: Install dependencies
+        run: |
+          make install
+
       - name: Build and test the Keyring side-pocket hook
         run: |
           make build
