@@ -3,6 +3,18 @@ src = "src"
 out = "out"
 libs = ["dependencies"]
 
+[lint]
+exclude_lints = [
+    "mixed-case-variable",
+    "screaming-snake-case-immutable",
+    "mixed-case-function",
+    "unsafe-typecast",
+    "divide-before-multiply",
+    "erc20-unchecked-transfer",
+    "screaming-snake-case-const",
+    "unsafe-cheatcode",
+]
+
 [dependencies]
 forge-std = "1.11.0"
 
