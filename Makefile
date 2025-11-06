@@ -9,7 +9,7 @@ help:
 	@echo "  make build       			- Compile all contracts"
 	@echo "  make test        			- Run all tests"
 	@echo "  make clean       			- Clean build artifacts"
-	@echo "  make simulate-deploy		- Simulate hook deployment"
+	@echo "  make simulate-deploy			- Simulate hook deployment"
 	@echo "  make deploy      			- Deploy hook"
 
 # Install all dependencies
