@@ -35,7 +35,7 @@ simulate-deploy:
 	-vvvv 
 
 # Deploy hook 
-simulate-deploy:
+deploy:
 	forge script script/DeployHookTargetAccessControlKeyringSidePocket.s.sol \
 	--rpc-url $(RPC_URL) \
 	--broadcast \
