@@ -30,12 +30,19 @@ contract HookTargetAccessControlKeyringSidePocket is HookTargetAccessControlKeyr
     /// @dev Maps user address to their cumulative withdrawn amount.
     mapping(address user => uint256 totalWithdrawnAmount) public userWithdrawnAmounts;
 
+    /// @notice Only add the withdrawal checks if side pocket functionality is enabled.
+    bool public sidePocketEnabled;
+
     /// @notice Emitted when the cumulative withdrawal liquidity index is updated.
     /// @param assetsAvailableForWithdrawal The new total assets available for withdrawal.
     /// @param totalSuppliedAssets The new total supplied assets for calculation.
     event CumulativeWithdrawalLiquidityIndexSet(
         uint256 indexed assetsAvailableForWithdrawal, uint256 indexed totalSuppliedAssets
     );
+
+    /// @notice Emitted when the side pocket functionality is toggled.
+    /// @param sidePocketEnabled The new state of the side pocket (true if enabled, false if disabled).
+    event ToggledSidePocket(bool sidePocketEnabled);
 
     /// @notice Thrown when a required value is zero.
     error ValueZero();
@@ -86,12 +93,21 @@ contract HookTargetAccessControlKeyringSidePocket is HookTargetAccessControlKeyr
         emit CumulativeWithdrawalLiquidityIndexSet(assetsAvailableForWithdrawal, totalSuppliedAssets);
     }
 
+    /// @notice Toggles the side pocket functionality on or off.
+    /// @dev Can only be called by an address with DEFAULT_ADMIN_ROLE.
+    /// Flips the current state of sidePocketEnabled between true and false.
+    function toggleSidePocket() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        sidePocketEnabled = !sidePocketEnabled;
+
+        emit ToggledSidePocket(sidePocketEnabled);
+    }
+
     /// @notice Intercepts EVault withdraw operations to enforce withdrawal limits and authenticate users.
     /// @dev Hook function called before vault withdrawal execution.
     /// @param amount The amount of assets to withdraw.
     /// @param owner The address whose balance will be debited.
     function withdraw(uint256 amount, address, address owner) external override {
-        _allowExit(owner, amount);
+        if (sidePocketEnabled) _allowExit(owner, amount);
         _authenticateCallerAndAccount(owner);
     }
 
@@ -101,7 +117,7 @@ contract HookTargetAccessControlKeyringSidePocket is HookTargetAccessControlKeyr
     /// @param owner The address whose shares will be burned.
     function redeem(uint256 shares, address, address owner) external override {
         uint256 amount = targetDebtVault.convertToAssets(shares);
-        _allowExit(owner, amount);
+        if (sidePocketEnabled) _allowExit(owner, amount);
         _authenticateCallerAndAccount(owner);
     }
 
