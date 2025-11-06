@@ -86,9 +86,8 @@ contract HookTargetAccessControlKeyringSidePocket is HookTargetAccessControlKeyr
     /// @notice Intercepts EVault withdraw operations to enforce withdrawal limits and authenticate users.
     /// @dev Hook function called before vault withdrawal execution.
     /// @param amount The amount of assets to withdraw.
-    /// @param receiver The address that will receive the withdrawn assets.
     /// @param owner The address whose balance will be debited.
-    function withdraw(uint256 amount, address receiver, address owner) external override {
+    function withdraw(uint256 amount, address, address owner) external override {
         _allowExit(owner, amount);
         _authenticateCallerAndAccount(owner);
     }
@@ -96,9 +95,8 @@ contract HookTargetAccessControlKeyringSidePocket is HookTargetAccessControlKeyr
     /// @notice Intercepts EVault redeem operations to enforce withdrawal limits and authenticate users.
     /// @dev Hook function called before vault share redemption; converts shares to assets.
     /// @param shares The number of vault shares to redeem.
-    /// @param receiver The address that will receive the withdrawn assets.
     /// @param owner The address whose shares will be burned.
-    function redeem(uint256 shares, address receiver, address owner) external override {
+    function redeem(uint256 shares, address, address owner) external override {
         uint256 amount = targetDebtVault.convertToAssets(shares);
         _allowExit(owner, amount);
         _authenticateCallerAndAccount(owner);
@@ -107,21 +105,21 @@ contract HookTargetAccessControlKeyringSidePocket is HookTargetAccessControlKeyr
     /// @notice Disabled transfer function to prevent vault share transfers.
     /// @dev Always reverts to enforce non-transferability of vault positions.
     /// @return bool Never returns, always reverts.
-    function transfer(address, uint256) external returns (bool) {
+    function transfer(address, uint256) external pure returns (bool) {
         revert Disallowed();
     }
 
     /// @notice Disabled transferFrom function to prevent vault share transfers.
     /// @dev Always reverts to enforce non-transferability of vault positions.
     /// @return bool Never returns, always reverts.
-    function transferFrom(address, address, uint256) external returns (bool) {
+    function transferFrom(address, address, uint256) external pure returns (bool) {
         revert Disallowed();
     }
 
     /// @notice Disabled transferFromMax function to prevent vault share transfers.
     /// @dev Always reverts to enforce non-transferability of vault positions.
     /// @return bool Never returns, always reverts.
-    function transferFromMax(address, address) external returns (bool) {
+    function transferFromMax(address, address) external pure returns (bool) {
         revert Disallowed();
     }
 

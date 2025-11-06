@@ -49,7 +49,7 @@ contract HookTargetAccessControlKeyringSidePocketTest is Test {
         factory.addProxy(vault);
     }
 
-    function test_Constructor() public {
+    function test_Constructor() public view {
         assertEq(address(hookTarget.targetDebtVault()), address(targetDebtVault));
         assertEq(address(hookTarget.keyring()), address(keyring));
         assertEq(hookTarget.policyId(), POLICY_ID);
