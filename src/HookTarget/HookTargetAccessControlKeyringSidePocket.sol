@@ -131,17 +131,29 @@ contract HookTargetAccessControlKeyringSidePocket is HookTargetAccessControlKeyr
     /// @param user The address attempting to withdraw.
     /// @param amount The amount of assets to withdraw.
     function _allowExit(address user, uint256 amount) internal {
-        uint256 assetsSupplied = targetDebtVault.convertToAssets(targetDebtVault.balanceOf(user));
-        uint256 totalWithdrawnAmount = userWithdrawnAmounts[user];
-        uint256 maxWithdrawableAssets = (
-            cumulativeWithdrawalLiquidityIndex.assetsAvailableForWithdrawal * (totalWithdrawnAmount + assetsSupplied)
-        ) / cumulativeWithdrawalLiquidityIndex.totalSuppliedAssets;
-        uint256 allowedAssetsForWithdrawal = maxWithdrawableAssets - totalWithdrawnAmount;
+        uint256 allowedAssetsForWithdrawal = getAssetsAvailableForWithdrawal(user);
 
         if (amount > allowedAssetsForWithdrawal) {
             revert WithdrawalAmountExceedsLimit(amount, allowedAssetsForWithdrawal);
         }
 
         userWithdrawnAmounts[user] += amount;
+    }
+
+    /// @notice Calculates the amount of assets a user is currently allowed to withdraw.
+    /// @dev Computes pro-rata withdrawal entitlement based on the cumulative withdrawal liquidity index.
+    /// The calculation uses (totalWithdrawnAmount + assetsSupplied) to represent the user's original position,
+    /// assuming their vault balance decreases proportionally with withdrawals.
+    /// @param user The address to check withdrawal allowance for.
+    /// @return The amount of assets the user can withdraw in the current period.
+    /// @custom:reverts Division by zero if totalSuppliedAssets is zero (uninitialized state).
+    function getAssetsAvailableForWithdrawal(address user) public view returns (uint256) {
+        uint256 assetsSupplied = targetDebtVault.convertToAssets(targetDebtVault.balanceOf(user));
+        uint256 totalWithdrawnAmount = userWithdrawnAmounts[user];
+        uint256 maxWithdrawableAssets = (
+            cumulativeWithdrawalLiquidityIndex.assetsAvailableForWithdrawal * (totalWithdrawnAmount + assetsSupplied)
+        ) / cumulativeWithdrawalLiquidityIndex.totalSuppliedAssets;
+
+        return maxWithdrawableAssets - totalWithdrawnAmount;
     }
 }
