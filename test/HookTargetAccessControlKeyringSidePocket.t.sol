@@ -26,6 +26,7 @@ contract HookTargetAccessControlKeyringSidePocketTest is Test {
     event CumulativeWithdrawalLiquidityIndexSet(
         uint256 indexed assetsAvailableForWithdrawal, uint256 indexed totalSuppliedAssets
     );
+    event ToggledSidePocket(bool sidePocketEnabled);
 
     function setUp() public {
         admin = makeAddr("admin");
@@ -53,6 +54,7 @@ contract HookTargetAccessControlKeyringSidePocketTest is Test {
         assertEq(address(hookTarget.targetDebtVault()), address(targetDebtVault));
         assertEq(address(hookTarget.keyring()), address(keyring));
         assertEq(hookTarget.policyId(), POLICY_ID);
+        assertFalse(hookTarget.sidePocketEnabled());
     }
 
     function test_SetCumulativeWithdrawalLiquidityIndex_Success() public {
@@ -94,7 +96,42 @@ contract HookTargetAccessControlKeyringSidePocketTest is Test {
         hookTarget.setCumulativeWithdrawalLiquidityIndex(1_000_000e18, 2_000_000e18);
     }
 
-    function test_Withdraw_WithinLimit_Success() public {
+    function test_ToggleSidePocket_EnableSuccess() public {
+        vm.prank(admin);
+        vm.expectEmit(true, false, false, true);
+        emit ToggledSidePocket(true);
+
+        hookTarget.toggleSidePocket();
+
+        assertTrue(hookTarget.sidePocketEnabled());
+    }
+
+    function test_ToggleSidePocket_DisableSuccess() public {
+        // First enable
+        vm.prank(admin);
+        hookTarget.toggleSidePocket();
+        assertTrue(hookTarget.sidePocketEnabled());
+
+        // Then disable
+        vm.prank(admin);
+        vm.expectEmit(true, false, false, true);
+        emit ToggledSidePocket(false);
+
+        hookTarget.toggleSidePocket();
+
+        assertFalse(hookTarget.sidePocketEnabled());
+    }
+
+    function test_ToggleSidePocket_OnlyAdmin() public {
+        vm.prank(user1);
+        vm.expectRevert();
+        hookTarget.toggleSidePocket();
+
+        // Verify state hasn't changed
+        assertFalse(hookTarget.sidePocketEnabled());
+    }
+
+    function test_Withdraw_SidePocketDisabled_NoLimitCheck() public {
         // Setup: User has 1M shares worth 1M assets
         targetDebtVault.setBalance(user1, 1_000_000e18);
         targetDebtVault.setTotalAssets(10_000_000e18);
@@ -103,6 +140,33 @@ contract HookTargetAccessControlKeyringSidePocketTest is Test {
         // Set withdrawal index: 5M available out of 10M total (50% withdrawable)
         vm.prank(admin);
         hookTarget.setCumulativeWithdrawalLiquidityIndex(5_000_000e18, 10_000_000e18);
+
+        // Setup keyring credential
+        keyring.setCredential(user1, POLICY_ID, true);
+
+        // Side pocket is disabled by default
+        assertFalse(hookTarget.sidePocketEnabled());
+
+        // User should be able to withdraw MORE than the 50% limit (600K instead of 500K max)
+        // because side pocket checks are bypassed
+        vm.prank(vault);
+        hookTarget.withdraw(600_000e18, user1, user1);
+
+        // No withdrawal amount should be tracked when side pocket is disabled
+        assertEq(hookTarget.userWithdrawnAmounts(user1), 0);
+    }
+
+    function test_Withdraw_WithinLimit_Success() public {
+        // Setup: User has 1M shares worth 1M assets
+        targetDebtVault.setBalance(user1, 1_000_000e18);
+        targetDebtVault.setTotalAssets(10_000_000e18);
+        targetDebtVault.setTotalSupply(10_000_000e18);
+
+        // Set withdrawal index: 5M available out of 10M total (50% withdrawable)
+        vm.startPrank(admin);
+        hookTarget.setCumulativeWithdrawalLiquidityIndex(5_000_000e18, 10_000_000e18);
+        hookTarget.toggleSidePocket();
+        vm.stopPrank();
 
         // Setup keyring credential
         keyring.setCredential(user1, POLICY_ID, true);
@@ -121,8 +185,10 @@ contract HookTargetAccessControlKeyringSidePocketTest is Test {
         targetDebtVault.setTotalSupply(10_000_000e18);
 
         // Set withdrawal index: 5M available out of 10M total (50% withdrawable)
-        vm.prank(admin);
+        vm.startPrank(admin);
         hookTarget.setCumulativeWithdrawalLiquidityIndex(5_000_000e18, 10_000_000e18);
+        hookTarget.toggleSidePocket();
+        vm.stopPrank();
 
         // Setup keyring credential
         keyring.setCredential(user1, POLICY_ID, true);
@@ -144,8 +210,10 @@ contract HookTargetAccessControlKeyringSidePocketTest is Test {
         targetDebtVault.setTotalSupply(10_000_000e18);
 
         // Set withdrawal index: 5M available out of 10M total (50% withdrawable)
-        vm.prank(admin);
+        vm.startPrank(admin);
         hookTarget.setCumulativeWithdrawalLiquidityIndex(5_000_000e18, 10_000_000e18);
+        hookTarget.toggleSidePocket();
+        vm.stopPrank();
 
         // Setup keyring credential
         keyring.setCredential(user1, POLICY_ID, true);
@@ -179,8 +247,10 @@ contract HookTargetAccessControlKeyringSidePocketTest is Test {
         targetDebtVault.setTotalSupply(10_000_000e18);
 
         // Set withdrawal index: 5M available out of 10M total (50% withdrawable)
-        vm.prank(admin);
+        vm.startPrank(admin);
         hookTarget.setCumulativeWithdrawalLiquidityIndex(5_000_000e18, 10_000_000e18);
+        hookTarget.toggleSidePocket();
+        vm.stopPrank();
 
         // Setup keyring credential
         keyring.setCredential(user1, POLICY_ID, true);
@@ -199,8 +269,10 @@ contract HookTargetAccessControlKeyringSidePocketTest is Test {
         targetDebtVault.setTotalSupply(10_000_000e18);
 
         // Set withdrawal index: 5M available out of 10M total (50% withdrawable)
-        vm.prank(admin);
+        vm.startPrank(admin);
         hookTarget.setCumulativeWithdrawalLiquidityIndex(5_000_000e18, 10_000_000e18);
+        hookTarget.toggleSidePocket();
+        vm.stopPrank();
 
         // Setup keyring credential
         keyring.setCredential(user1, POLICY_ID, true);
@@ -223,8 +295,10 @@ contract HookTargetAccessControlKeyringSidePocketTest is Test {
         targetDebtVault.setTotalSupply(10_000_000e18);
 
         // Set withdrawal index: 5M available out of 10M total (50% withdrawable)
-        vm.prank(admin);
+        vm.startPrank(admin);
         hookTarget.setCumulativeWithdrawalLiquidityIndex(5_000_000e18, 10_000_000e18);
+        hookTarget.toggleSidePocket();
+        vm.stopPrank();
 
         // Setup keyring credentials
         keyring.setCredential(user1, POLICY_ID, true);
@@ -259,8 +333,10 @@ contract HookTargetAccessControlKeyringSidePocketTest is Test {
         targetDebtVault.setTotalSupply(totalSupply);
 
         // Set withdrawal index
-        vm.prank(admin);
+        vm.startPrank(admin);
         hookTarget.setCumulativeWithdrawalLiquidityIndex(availableForWithdrawal, totalSupply);
+        hookTarget.toggleSidePocket();
+        vm.stopPrank();
 
         // Setup keyring credential
         keyring.setCredential(user1, POLICY_ID, true);
@@ -303,8 +379,10 @@ contract HookTargetAccessControlKeyringSidePocketTest is Test {
         targetDebtVault.setTotalSupply(10_000_000e18);
 
         // Set withdrawal index: 10M available out of 20M total (50% withdrawable)
-        vm.prank(admin);
+        vm.startPrank(admin);
         hookTarget.setCumulativeWithdrawalLiquidityIndex(10_000_000e18, 20_000_000e18);
+        hookTarget.toggleSidePocket();
+        vm.stopPrank();
 
         // Setup keyring credential
         keyring.setCredential(user1, POLICY_ID, true);
@@ -323,8 +401,10 @@ contract HookTargetAccessControlKeyringSidePocketTest is Test {
         targetDebtVault.setTotalSupply(10_000_000e18);
 
         // Set withdrawal index: 10M available out of 20M total (50% withdrawable)
-        vm.prank(admin);
+        vm.startPrank(admin);
         hookTarget.setCumulativeWithdrawalLiquidityIndex(10_000_000e18, 20_000_000e18);
+        hookTarget.toggleSidePocket();
+        vm.stopPrank();
 
         // Setup keyring credential
         keyring.setCredential(user1, POLICY_ID, true);
@@ -343,8 +423,10 @@ contract HookTargetAccessControlKeyringSidePocketTest is Test {
         targetDebtVault.setTotalSupply(10_000_000e18);
 
         // Initially: 5M available out of 10M total (50% withdrawable)
-        vm.prank(admin);
+        vm.startPrank(admin);
         hookTarget.setCumulativeWithdrawalLiquidityIndex(5_000_000e18, 10_000_000e18);
+        hookTarget.toggleSidePocket();
+        vm.stopPrank();
 
         // Setup keyring credential
         keyring.setCredential(user1, POLICY_ID, true);
@@ -371,8 +453,10 @@ contract HookTargetAccessControlKeyringSidePocketTest is Test {
         targetDebtVault.setTotalSupply(10_000_000e18);
 
         // Set withdrawal index: 10M available out of 10M total (100% withdrawable)
-        vm.prank(admin);
+        vm.startPrank(admin);
         hookTarget.setCumulativeWithdrawalLiquidityIndex(10_000_000e18, 10_000_000e18);
+        hookTarget.toggleSidePocket();
+        vm.stopPrank();
 
         // Setup keyring credential
         keyring.setCredential(user1, POLICY_ID, true);
@@ -391,8 +475,10 @@ contract HookTargetAccessControlKeyringSidePocketTest is Test {
         targetDebtVault.setTotalSupply(10_000_000e18);
 
         // Set withdrawal index: 100K available out of 10M total (1% withdrawable)
-        vm.prank(admin);
+        vm.startPrank(admin);
         hookTarget.setCumulativeWithdrawalLiquidityIndex(100_000e18, 10_000_000e18);
+        hookTarget.toggleSidePocket();
+        vm.stopPrank();
 
         // Setup keyring credential
         keyring.setCredential(user1, POLICY_ID, true);
@@ -410,8 +496,10 @@ contract HookTargetAccessControlKeyringSidePocketTest is Test {
         targetDebtVault.setTotalAssets(10_000_000e18);
         targetDebtVault.setTotalSupply(10_000_000e18);
 
-        vm.prank(admin);
+        vm.startPrank(admin);
         hookTarget.setCumulativeWithdrawalLiquidityIndex(5_000_000e18, 10_000_000e18);
+        hookTarget.toggleSidePocket();
+        vm.stopPrank();
 
         // No keyring credential set
 
@@ -426,6 +514,9 @@ contract HookTargetAccessControlKeyringSidePocketTest is Test {
         targetDebtVault.setBalance(user1, 1_000_000e18);
         targetDebtVault.setTotalAssets(10_000_000e18);
         targetDebtVault.setTotalSupply(10_000_000e18);
+
+        vm.prank(admin);
+        hookTarget.toggleSidePocket();
 
         // Setup keyring credential
         keyring.setCredential(user1, POLICY_ID, true);
@@ -451,6 +542,9 @@ contract HookTargetAccessControlKeyringSidePocketTest is Test {
         targetDebtVault.setBalance(user1, 1_000_000e18);
         targetDebtVault.setTotalAssets(10_000_000e18);
         targetDebtVault.setTotalSupply(10_000_000e18);
+
+        vm.prank(admin);
+        hookTarget.toggleSidePocket();
 
         // Setup keyring credential
         keyring.setCredential(user1, POLICY_ID, true);
