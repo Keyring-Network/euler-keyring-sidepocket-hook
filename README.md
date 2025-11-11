@@ -1,221 +1,201 @@
-# Hook Target Smart Contracts
+<!-- PROJECT SHIELDS -->
 
-This repository contains the separated smart contract files for the Hook Target system, organized into a modular directory structure for better maintainability and clarity.
+[![Contributors][contributors-shield]][contributors-url]
+[![Forks][forks-shield]][forks-url]
+[![Stargazers][stars-shield]][stars-url]
+[![Issues][issues-shield]][issues-url]
+[![MIT License][license-shield]][license-url]
 
-## Directory Structure
+<!-- PROJECT LOGO -->
+<br />
+<div align="center">
+  <!-- <a href="https://github.com/Keyring-Network/euler-keyring-sidepocket-hook">
+    <img src="assets/icon.svg" alt="Logo" width="80" height="80">
+  </a> -->
 
-```
-hooktarget/
-├── lib/
-│   ├── ethereum-vault-connector/
-│   │   └── src/
-│   │       ├── ExecutionContext.sol
-│   │       ├── interfaces/
-│   │       │   └── IEthereumVaultConnector.sol
-│   │       └── utils/
-│   │           └── EVCUtil.sol
-│   │
-│   ├── euler-vault-kit/
-│   │   └── src/
-│   │       ├── GenericFactory/
-│   │       │   ├── BeaconProxy.sol
-│   │       │   ├── GenericFactory.sol
-│   │       │   └── MetaProxyDeployer.sol
-│   │       └── interfaces/
-│   │           └── IHookTarget.sol
-│   │
-│   ├── openzeppelin-contracts/
-│   │   └── contracts/
-│   │       ├── access/
-│   │       │   ├── IAccessControl.sol
-│   │       │   └── extensions/
-│   │       │       └── IAccessControlEnumerable.sol
-│   │       └── utils/
-│   │           ├── introspection/
-│   │           │   └── IERC165.sol
-│   │           └── structs/
-│   │               └── EnumerableSet.sol
-│   │
-│   └── openzeppelin-contracts-upgradeable/
-│       └── contracts/
-│           ├── access/
-│           │   ├── AccessControlUpgradeable.sol
-│           │   └── extensions/
-│           │       └── AccessControlEnumerableUpgradeable.sol
-│           ├── proxy/
-│           │   └── utils/
-│           │       └── Initializable.sol
-│           └── utils/
-│               ├── ContextUpgradeable.sol
-│               └── introspection/
-│                   └── ERC165Upgradeable.sol
-│
-└── src/
-    ├── AccessControl/
-    │   └── SelectorAccessControl.sol
-    └── HookTarget/
-        ├── BaseHookTarget.sol
-        └── HookTargetAccessControlKeyring.sol
-```
+  <h3 align="center">Euler Keyring Side Pocket Hook</h3>
 
-## File Descriptions
+  <p align="center">
+    Access control hook for Euler vaults with pro-rata withdrawal limits
+    <br />
+    <a href="https://github.com/Keyring-Network/euler-keyring-sidepocket-hook/issues/new?labels=bug&template=bug-report---.md">Report Bug</a>
+    ·
+    <a href="https://github.com/Keyring-Network/euler-keyring-sidepocket-hook/issues/new?labels=enhancement&template=feature-request---.md">Request Feature</a>
+  </p>
+</div>
 
-### Library Files (Ethereum Vault Connector)
+<!-- TABLE OF CONTENTS -->
+<details>
+  <summary>Table of Contents</summary>
+  <ol>
+    <li>
+      <a href="#about-the-project">About The Project</a>
+      <ul>
+        <li><a href="#built-with">Built With</a></li>
+      </ul>
+    </li>
+    <li>
+      <a href="#getting-started">Getting Started</a>
+      <ul>
+        <li><a href="#prerequisites">Prerequisites</a></li>
+        <li><a href="#installation">Installation</a></li>
+        <li><a href="#main-contract-functions">Main Contract Functions</a></li>
+        <li><a href="#custom-errors">Custom Errors</a></li>
+      </ul>
+    </li>
+    <li><a href="#roadmap">Roadmap</a></li>
+    <li><a href="#contributing">Contributing</a></li>
+    <li><a href="#license">License</a></li>
+  </ol>
+</details>
 
-- **ExecutionContext.sol**: Manages execution context bit fields for EVC operations
-- **IEthereumVaultConnector.sol**: Interface defining EVC contract methods
-- **EVCUtil.sol**: Abstract utility contract for EVC interaction and authentication
+<!-- ABOUT THE PROJECT -->
 
-### Library Files (Euler Vault Kit)
+## About The Project
 
-- **BeaconProxy.sol**: Proxy contract forwarding calls to an implementation fetched from a beacon
-- **GenericFactory.sol**: Factory for creating upgradeable and non-upgradeable proxy contracts
-- **MetaProxyDeployer.sol**: Deploys minimal proxies with metadata based on EIP-3448
-- **IHookTarget.sol**: Interface for hook target contract validation
+This project implements `HookTargetAccessControlKeyringSidePocket`, a hook contract for Euler vaults that extends `HookTargetAccessControlKeyring` with side pocket functionality for managing withdrawal limits.
 
-### Library Files (OpenZeppelin Contracts)
+### Key Features
 
-- **IAccessControl.sol**: Interface for role-based access control
-- **IAccessControlEnumerable.sol**: Interface extending IAccessControl with enumeration
-- **IERC165.sol**: Interface for ERC-165 standard interface detection
-- **EnumerableSet.sol**: Library for managing sets of primitive types
+- **Access Control**: Keyring-based authentication for vault operations, ensuring only authorized users can interact with the vault
+- **Pro-Rata Withdrawal Limits**: Enforces withdrawal limits based on a cumulative liquidity index system, ensuring proportional withdrawal rights based on supplied assets
+- **Side Pocket Functionality**: Toggleable side pocket feature that can be enabled or disabled by administrators
+- **Transfer Restrictions**: Prevents transfers of vault shares to maintain position integrity
+- **Cumulative Tracking**: Tracks total withdrawn amounts per user to enforce withdrawal limits accurately
 
-### Library Files (OpenZeppelin Contracts Upgradeable)
+### How It Works
 
-- **Initializable.sol**: Base contract for upgradeable contracts with initialization protection
-- **ContextUpgradeable.sol**: Provides execution context information for upgradeable contracts
-- **ERC165Upgradeable.sol**: Upgradeable implementation of ERC-165 interface detection
-- **AccessControlUpgradeable.sol**: Upgradeable role-based access control implementation
-- **AccessControlEnumerableUpgradeable.sol**: Upgradeable access control with enumeration support
+The contract uses a cumulative withdrawal liquidity index to calculate each user's withdrawal allowance:
 
-### Application Files (Custom Implementation)
+1. **Initialization**: Administrators set the cumulative withdrawal liquidity index with:
 
-- **SelectorAccessControl.sol**: Utility contract for function selector-based access control with EVC support
-- **BaseHookTarget.sol**: Base contract for hook targets integrated with EVK factory
-- **HookTargetAccessControlKeyring.sol**: Hook target with access control and Keyring credential checking
+   - `assetsAvailableForWithdrawal`: Total assets available for withdrawal in the current period
+   - `totalSuppliedAssets`: Total assets supplied by all users for proportional calculation
 
-## Key Contracts
+2. **Withdrawal Calculation**: When a user attempts to withdraw, the contract calculates their allowed withdrawal amount using:
 
-### Core Application Contracts (`src/`)
+   ```
+   allowedAssets = (assetsAvailableForWithdrawal * (totalWithdrawn + assetsSupplied)) / totalSuppliedAssets - totalWithdrawn
+   ```
 
-1. **HookTargetAccessControlKeyring** (`src/HookTarget/HookTargetAccessControlKeyring.sol`)
+3. **Access Control**: All vault operations require Keyring credential verification, ensuring only authorized users can interact with the vault.
 
-   - Main hook target contract with access control and Keyring credential checking
-   - Intercepts EVault operations (deposit, mint, withdraw, redeem, etc.)
-   - Supports role-based access control with wildcard permissions
-   - Integrates with Keyring for credential validation
+4. **Side Pocket Toggle**: The side pocket functionality can be enabled or disabled, allowing administrators to control when withdrawal limits are enforced.
 
-2. **BaseHookTarget** (`src/HookTarget/BaseHookTarget.sol`)
+### Built With
 
-   - Base contract for hook targets
-   - Validates caller is a recognized EVault factory proxy
-   - Extracts message sender from calldata in vault context
+- Solidity
+- Foundry
+- Soldeer
 
-3. **SelectorAccessControl** (`src/AccessControl/SelectorAccessControl.sol`)
-   - Function selector-based access control utility
-   - EVC-integrated role management
-   - Supports wildcard and specific selector permissions
-
-### Library Contracts (`lib/`)
-
-#### Ethereum Vault Connector
-
-- **ExecutionContext.sol**: Bit-field based execution context management
-- **IEthereumVaultConnector.sol**: EVC interface definition
-- **EVCUtil.sol**: Utilities for EVC interaction
-
-#### Euler Vault Kit
-
-- **BeaconProxy.sol**: Beacon-based proxy implementation
-- **GenericFactory.sol**: Factory for creating proxy contracts
-- **MetaProxyDeployer.sol**: Meta-proxy deployment utilities
-- **IHookTarget.sol**: Hook target interface
-
-#### OpenZeppelin Contracts
-
-- Access control interfaces and implementations
-- ERC-165 interface detection
-- Enumerable sets for managing collections
-
-## Migration Notes
-
-All contracts maintain their original functionality and interfaces. The separation was done purely for organization and does not affect the runtime behavior of the contracts.
-
-### Import Paths
-
-When referencing these files, use relative import paths based on their location in the file tree. For example:
-
-- From `src/HookTarget/HookTargetAccessControlKeyring.sol`:
-  - `import {BaseHookTarget} from "./BaseHookTarget.sol";`
-  - `import {SelectorAccessControl} from "../AccessControl/SelectorAccessControl.sol";`
+<!-- GETTING STARTED -->
 
 ## Getting Started
 
 ### Prerequisites
 
-- Solidity ^0.8.19
-- Compatible Ethereum development environment
+Make sure you have git, rust, and foundry installed and configured on your system.
 
-### Integration
+### Installation
 
-To use these contracts in your project:
+Clone the repo,
 
-1. **Ensure proper import paths** - All imports are relative and structured according to the directory hierarchy
-2. **Deploy HookTargetAccessControlKeyring** - Provide required parameters:
-   - `_evc`: Ethereum Vault Connector address
-   - `_admin`: Admin address for role management
-   - `_eVaultFactory`: EVault factory address
-   - `_keyring`: Keyring contract address
-   - `_policyId`: Policy ID for credential checking
-
-### Configuration Example
-
-```solidity
-// Deploy the hook target
-HookTargetAccessControlKeyring hookTarget = new HookTargetAccessControlKeyring(
-    evcAddress,
-    adminAddress,
-    eVaultFactoryAddress,
-    keyringAddress,
-    policyIdValue
-);
-
-// Grant roles as needed
-hookTarget.grantRole(
-    keccak256("SELECTOR_ROLE"),
-    authorizedCaller
-);
+```shell
+git clone https://github.com/Keyring-Network/euler-keyring-sidepocket-hook.git
 ```
 
-## Security Considerations
+cd into the repo, install the necessary dependencies, and build the project,
 
-1. **Access Control**: Uses role-based access control with EVC integration
-2. **Keyring Credentials**: Optional Keyring-based credential validation
-3. **Privileged Accounts**: Special handling for accounts with PRIVILEGED_ACCOUNT_ROLE
-4. **EVC Integration**: All role management operations require proper EVC authentication
+```shell
+cd euler-keyring-sidepocket-hook
+make
+```
 
-## File Organization Rationale
+Run tests by executing,
 
-The contracts are organized following their source paths from the original libraries:
+```shell
+make test
+```
 
-- **lib/ethereum-vault-connector**: EVC protocol utilities
-- **lib/euler-vault-kit**: Euler vault infrastructure
-- **lib/openzeppelin-contracts**: Standard OpenZeppelin contracts
-- **lib/openzeppelin-contracts-upgradeable**: Upgradeable versions
-- **src/**: Custom application-specific contracts
+That's it, you are good to go now!
 
-This structure mirrors the actual library organization, making it easy to:
+### Main Contract Functions
 
-- Track contract origins
-- Update library versions
-- Understand dependencies
-- Maintain consistency with upstream libraries
+#### `setCumulativeWithdrawalLiquidityIndex(uint256 assetsAvailableForWithdrawal, uint256 totalSuppliedAssets)`
+
+Sets the cumulative withdrawal liquidity index for the current withdrawal period. Can only be called by an address with `DEFAULT_ADMIN_ROLE`.
+
+#### `toggleSidePocket()`
+
+Toggles the side pocket functionality on or off. Can only be called by an address with `DEFAULT_ADMIN_ROLE`.
+
+#### `getAssetsAvailableForWithdrawal(address user)`
+
+Calculates and returns the amount of assets a user is currently allowed to withdraw based on their supplied assets and the cumulative withdrawal liquidity index.
+
+#### `withdraw(uint256 amount, address, address owner)`
+
+Hook function that intercepts EVault withdraw operations to enforce withdrawal limits and authenticate users.
+
+#### `redeem(uint256 shares, address, address owner)`
+
+Hook function that intercepts EVault redeem operations to enforce withdrawal limits and authenticate users.
+
+#### `transfer(address, uint256)`, `transferFrom(address, address, uint256)`, `transferFromMax(address, address)`
+
+These functions are disabled and always revert to prevent vault share transfers.
+
+### Custom Errors
+
+The contract defines several custom errors that may be thrown:
+
+- **`ValueZero()`**: Thrown when attempting to set the cumulative withdrawal liquidity index with zero values
+- **`WithdrawalAmountExceedsLimit(uint256 amount, uint256 allowedAssetsForWithdrawal)`**: Thrown when a user attempts to withdraw more than their allowed limit
+- **`Disallowed()`**: Thrown when attempting to transfer vault shares (transfers are disabled)
+- **`IndexNotInitialized()`**: Thrown when trying to withdraw or check withdrawal allowance before the cumulative withdrawal liquidity index is initialized
+
+<!-- ROADMAP -->
+
+## Roadmap
+
+- [x] Smart contract development
+- [x] Testing
+- [x] Documentation
+
+See the [open issues](https://github.com/Keyring-Network/euler-keyring-sidepocket-hook/issues) for a full list of proposed features (and known issues).
+
+<!-- CONTRIBUTING -->
+
+## Contributing
+
+Contributions are what make the open source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
+
+If you have a suggestion that would make this better, please fork the repo and create a pull request. You can also simply open an issue with the tag "enhancement".
+Don't forget to give the project a star! Thanks again!
+
+1. Fork the Project
+2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the Branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+<!-- LICENSE -->
 
 ## License
 
-All contracts are licensed under GPL-2.0-or-later.
+Distributed under the MIT License. See `LICENSE.txt` for more information.
 
-### Technical Details
+<!-- MARKDOWN LINKS & IMAGES -->
+<!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
 
-All files use: `SPDX-License-Identifier: GPL-2.0-or-later`
-All files use: `pragma solidity >=0.8.0 ^0.8.19;`
+[contributors-shield]: https://img.shields.io/github/contributors/Keyring-Network/euler-keyring-sidepocket-hook.svg?style=for-the-badge
+[contributors-url]: https://github.com/Keyring-Network/euler-keyring-sidepocket-hook/graphs/contributors
+[forks-shield]: https://img.shields.io/github/forks/Keyring-Network/euler-keyring-sidepocket-hook.svg?style=for-the-badge
+[forks-url]: https://github.com/Keyring-Network/euler-keyring-sidepocket-hook/network/members
+[stars-shield]: https://img.shields.io/github/stars/Keyring-Network/euler-keyring-sidepocket-hook.svg?style=for-the-badge
+[stars-url]: https://github.com/Keyring-Network/euler-keyring-sidepocket-hook/stargazers
+[issues-shield]: https://img.shields.io/github/issues/Keyring-Network/euler-keyring-sidepocket-hook.svg?style=for-the-badge
+[issues-url]: https://github.com/Keyring-Network/euler-keyring-sidepocket-hook/issues
+[license-shield]: https://img.shields.io/github/license/Keyring-Network/euler-keyring-sidepocket-hook.svg?style=for-the-badge
+[license-url]: https://github.com/Keyring-Network/euler-keyring-sidepocket-hook/blob/master/LICENSE.txt
+[linktree-url]: https://linktr.ee/mgnfy.view
