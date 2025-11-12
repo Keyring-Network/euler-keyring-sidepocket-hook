@@ -13,7 +13,6 @@ contract HookTargetAccessControlKeyringSidePocketTest is Test {
     address public admin;
     address public user1;
     address public user2;
-    address public vault;
 
     HookTargetAccessControlKeyringSidePocket public hookTarget;
     MockEVC public evc;
@@ -28,11 +27,12 @@ contract HookTargetAccessControlKeyringSidePocketTest is Test {
     );
     event ToggledSidePocket(bool sidePocketEnabled);
 
+    error NotTargetDebtVault(address caller, address targetDebtVaultAddr);
+
     function setUp() public {
         admin = makeAddr("admin");
         user1 = makeAddr("user1");
         user2 = makeAddr("user2");
-        vault = makeAddr("vault");
 
         // Deploy mock contracts
         evc = new MockEVC();
@@ -46,8 +46,8 @@ contract HookTargetAccessControlKeyringSidePocketTest is Test {
             address(evc), admin, address(factory), address(keyring), POLICY_ID, address(targetDebtVault)
         );
 
-        // Setup vault as factory proxy
-        factory.addProxy(vault);
+        // Setup address(targetDebtVault) as factory proxy
+        factory.addProxy(address(targetDebtVault));
     }
 
     function test_Constructor() public view {
@@ -131,6 +131,30 @@ contract HookTargetAccessControlKeyringSidePocketTest is Test {
         assertFalse(hookTarget.sidePocketEnabled());
     }
 
+    function test_Withdraw_CallerOnlyTargetDebtVault() public {
+        // Setup: User has 1M shares worth 1M assets
+        targetDebtVault.setBalance(user1, 1_000_000e18);
+        targetDebtVault.setTotalAssets(10_000_000e18);
+        targetDebtVault.setTotalSupply(10_000_000e18);
+
+        // Set withdrawal index: 5M available out of 10M total (50% withdrawable)
+        vm.prank(admin);
+        hookTarget.setCumulativeWithdrawalLiquidityIndex(5_000_000e18, 10_000_000e18);
+
+        // Setup keyring credential
+        keyring.setCredential(user1, POLICY_ID, true);
+
+        // Add temporary vault to factory whitelist
+        address vault = makeAddr("vault");
+        factory.addProxy(vault);
+
+        // User should be able to withdraw MORE than the 50% limit (600K instead of 500K max)
+        // because side pocket checks are bypassed
+        vm.prank(vault);
+        vm.expectRevert(abi.encodeWithSelector(NotTargetDebtVault.selector, vault, address(targetDebtVault)));
+        hookTarget.withdraw(600_000e18, user1, user1);
+    }
+
     function test_Withdraw_SidePocketDisabled_NoLimitCheck() public {
         // Setup: User has 1M shares worth 1M assets
         targetDebtVault.setBalance(user1, 1_000_000e18);
@@ -149,7 +173,7 @@ contract HookTargetAccessControlKeyringSidePocketTest is Test {
 
         // User should be able to withdraw MORE than the 50% limit (600K instead of 500K max)
         // because side pocket checks are bypassed
-        vm.prank(vault);
+        vm.prank(address(targetDebtVault));
         hookTarget.withdraw(600_000e18, user1, user1);
 
         // No withdrawal amount should be tracked when side pocket is disabled
@@ -172,7 +196,7 @@ contract HookTargetAccessControlKeyringSidePocketTest is Test {
         keyring.setCredential(user1, POLICY_ID, true);
 
         // User should be able to withdraw up to 500K (50% of their 1M)
-        vm.prank(vault);
+        vm.prank(address(targetDebtVault));
         hookTarget.withdraw(500_000e18, user1, user1);
 
         assertEq(hookTarget.userWithdrawnAmounts(user1), 500_000e18);
@@ -194,7 +218,7 @@ contract HookTargetAccessControlKeyringSidePocketTest is Test {
         keyring.setCredential(user1, POLICY_ID, true);
 
         // User tries to withdraw 600K (exceeds 50% limit of 500K)
-        vm.prank(vault);
+        vm.prank(address(targetDebtVault));
         vm.expectRevert(
             abi.encodeWithSelector(
                 HookTargetAccessControlKeyringSidePocket.WithdrawalAmountExceedsLimit.selector, 600_000e18, 500_000e18
@@ -219,15 +243,15 @@ contract HookTargetAccessControlKeyringSidePocketTest is Test {
         keyring.setCredential(user1, POLICY_ID, true);
 
         // First withdrawal of 200K
-        vm.prank(vault);
+        vm.prank(address(targetDebtVault));
         hookTarget.withdraw(200_000e18, user1, user1);
         assertEq(hookTarget.userWithdrawnAmounts(user1), 200_000e18);
 
-        // Update user balance after withdrawal (simulating real vault behavior)
+        // Update user balance after withdrawal (simulating real address(targetDebtVault) behavior)
         targetDebtVault.setBalance(user1, 800_000e18);
 
         // Second withdrawal of 300K (total 500K, at limit)
-        vm.prank(vault);
+        vm.prank(address(targetDebtVault));
         hookTarget.withdraw(300_000e18, user1, user1);
         assertEq(hookTarget.userWithdrawnAmounts(user1), 500_000e18);
 
@@ -235,9 +259,34 @@ contract HookTargetAccessControlKeyringSidePocketTest is Test {
         targetDebtVault.setBalance(user1, 500_000e18);
 
         // Third withdrawal should fail (no more allowance despite having balance)
-        vm.prank(vault);
+        vm.prank(address(targetDebtVault));
         vm.expectRevert();
         hookTarget.withdraw(1e18, user1, user1);
+    }
+
+    function test_Redeem_CallerOnlyTargetDebtVault() public {
+        // Setup: User has 1M shares worth 1M assets (1:1 ratio)
+        targetDebtVault.setBalance(user1, 1_000_000e18);
+        targetDebtVault.setTotalAssets(10_000_000e18);
+        targetDebtVault.setTotalSupply(10_000_000e18);
+
+        // Set withdrawal index: 5M available out of 10M total (50% withdrawable)
+        vm.startPrank(admin);
+        hookTarget.setCumulativeWithdrawalLiquidityIndex(5_000_000e18, 10_000_000e18);
+        hookTarget.toggleSidePocket();
+        vm.stopPrank();
+
+        // Setup keyring credential
+        keyring.setCredential(user1, POLICY_ID, true);
+
+        // Add temporary vault to factory whitelist
+        address vault = makeAddr("vault");
+        factory.addProxy(vault);
+
+        // User redeems 500K shares (50% of their 1M)
+        vm.prank(vault);
+        vm.expectRevert(abi.encodeWithSelector(NotTargetDebtVault.selector, vault, address(targetDebtVault)));
+        hookTarget.redeem(500_000e18, user1, user1);
     }
 
     function test_Redeem_WithinLimit_Success() public {
@@ -256,7 +305,7 @@ contract HookTargetAccessControlKeyringSidePocketTest is Test {
         keyring.setCredential(user1, POLICY_ID, true);
 
         // User redeems 500K shares (50% of their 1M)
-        vm.prank(vault);
+        vm.prank(address(targetDebtVault));
         hookTarget.redeem(500_000e18, user1, user1);
 
         assertEq(hookTarget.userWithdrawnAmounts(user1), 500_000e18);
@@ -278,7 +327,7 @@ contract HookTargetAccessControlKeyringSidePocketTest is Test {
         keyring.setCredential(user1, POLICY_ID, true);
 
         // User tries to redeem 600K shares (exceeds 50% limit)
-        vm.prank(vault);
+        vm.prank(address(targetDebtVault));
         vm.expectRevert(
             abi.encodeWithSelector(
                 HookTargetAccessControlKeyringSidePocket.WithdrawalAmountExceedsLimit.selector, 600_000e18, 500_000e18
@@ -305,11 +354,11 @@ contract HookTargetAccessControlKeyringSidePocketTest is Test {
         keyring.setCredential(user2, POLICY_ID, true);
 
         // User1 can withdraw 500K (50% of 1M)
-        vm.prank(vault);
+        vm.prank(address(targetDebtVault));
         hookTarget.withdraw(500_000e18, user1, user1);
 
         // User2 can withdraw 1M (50% of 2M)
-        vm.prank(vault);
+        vm.prank(address(targetDebtVault));
         hookTarget.withdraw(1_000_000e18, user2, user2);
 
         assertEq(hookTarget.userWithdrawnAmounts(user1), 500_000e18);
@@ -345,14 +394,14 @@ contract HookTargetAccessControlKeyringSidePocketTest is Test {
         uint256 expectedMax = (availableForWithdrawal * 1_000_000e18) / totalSupply;
 
         // User can withdraw up to expected max
-        vm.prank(vault);
+        vm.prank(address(targetDebtVault));
         hookTarget.withdraw(expectedMax, user1, user1);
 
-        // Update user balance after withdrawal (simulating real vault behavior)
+        // Update user balance after withdrawal (simulating real address(targetDebtVault) behavior)
         targetDebtVault.setBalance(user1, 1_000_000e18 - expectedMax);
 
         // User cannot withdraw more
-        vm.prank(vault);
+        vm.prank(address(targetDebtVault));
         vm.expectRevert();
         hookTarget.withdraw(1e18, user1, user1);
     }
@@ -373,7 +422,7 @@ contract HookTargetAccessControlKeyringSidePocketTest is Test {
     }
 
     function test_Withdraw_OneToOneRatio() public {
-        // Setup: User has 1M shares worth 2M assets (2:1 ratio - vault gained value)
+        // Setup: User has 1M shares worth 2M assets (2:1 ratio - address(targetDebtVault) gained value)
         targetDebtVault.setBalance(user1, 1_000_000e18);
         targetDebtVault.setTotalAssets(20_000_000e18);
         targetDebtVault.setTotalSupply(10_000_000e18);
@@ -388,7 +437,7 @@ contract HookTargetAccessControlKeyringSidePocketTest is Test {
         keyring.setCredential(user1, POLICY_ID, true);
 
         // User's 1M shares = 2M assets, so they can withdraw 1M assets (50%)
-        vm.prank(vault);
+        vm.prank(address(targetDebtVault));
         hookTarget.withdraw(1_000_000e18, user1, user1);
 
         assertEq(hookTarget.userWithdrawnAmounts(user1), 1_000_000e18);
@@ -410,7 +459,7 @@ contract HookTargetAccessControlKeyringSidePocketTest is Test {
         keyring.setCredential(user1, POLICY_ID, true);
 
         // User redeems 500K shares = 1M assets (50% of their value)
-        vm.prank(vault);
+        vm.prank(address(targetDebtVault));
         hookTarget.redeem(500_000e18, user1, user1);
 
         assertEq(hookTarget.userWithdrawnAmounts(user1), 1_000_000e18);
@@ -432,7 +481,7 @@ contract HookTargetAccessControlKeyringSidePocketTest is Test {
         keyring.setCredential(user1, POLICY_ID, true);
 
         // User withdraws 400K
-        vm.prank(vault);
+        vm.prank(address(targetDebtVault));
         hookTarget.withdraw(400_000e18, user1, user1);
 
         // Admin increases available to 8M (80% now withdrawable)
@@ -440,7 +489,7 @@ contract HookTargetAccessControlKeyringSidePocketTest is Test {
         hookTarget.setCumulativeWithdrawalLiquidityIndex(8_000_000e18, 10_000_000e18);
 
         // User can now withdraw more: 80% of 1M = 800K, minus already withdrawn 400K = 400K more
-        vm.prank(vault);
+        vm.prank(address(targetDebtVault));
         hookTarget.withdraw(400_000e18, user1, user1);
 
         assertEq(hookTarget.userWithdrawnAmounts(user1), 800_000e18);
@@ -462,7 +511,7 @@ contract HookTargetAccessControlKeyringSidePocketTest is Test {
         keyring.setCredential(user1, POLICY_ID, true);
 
         // User can withdraw full 1M
-        vm.prank(vault);
+        vm.prank(address(targetDebtVault));
         hookTarget.withdraw(1_000_000e18, user1, user1);
 
         assertEq(hookTarget.userWithdrawnAmounts(user1), 1_000_000e18);
@@ -484,7 +533,7 @@ contract HookTargetAccessControlKeyringSidePocketTest is Test {
         keyring.setCredential(user1, POLICY_ID, true);
 
         // User can withdraw 10K (1% of 1M)
-        vm.prank(vault);
+        vm.prank(address(targetDebtVault));
         hookTarget.withdraw(10_000e18, user1, user1);
 
         assertEq(hookTarget.userWithdrawnAmounts(user1), 10_000e18);
@@ -504,7 +553,7 @@ contract HookTargetAccessControlKeyringSidePocketTest is Test {
         // No keyring credential set
 
         // Withdrawal should fail authentication
-        vm.prank(vault);
+        vm.prank(address(targetDebtVault));
         vm.expectRevert();
         hookTarget.withdraw(100_000e18, user1, user1);
     }
@@ -523,7 +572,7 @@ contract HookTargetAccessControlKeyringSidePocketTest is Test {
 
         // Attempt withdrawal without initializing index
         // Index defaults to zero values, should revert
-        vm.prank(vault);
+        vm.prank(address(targetDebtVault));
         vm.expectRevert(HookTargetAccessControlKeyringSidePocket.IndexNotInitialized.selector);
         hookTarget.withdraw(100_000e18, user1, user1);
     }
@@ -550,7 +599,7 @@ contract HookTargetAccessControlKeyringSidePocketTest is Test {
         keyring.setCredential(user1, POLICY_ID, true);
 
         // Attempt redeem without initializing index
-        vm.prank(vault);
+        vm.prank(address(targetDebtVault));
         vm.expectRevert(HookTargetAccessControlKeyringSidePocket.IndexNotInitialized.selector);
         hookTarget.redeem(100_000e18, user1, user1);
     }

@@ -47,6 +47,9 @@ contract HookTargetAccessControlKeyringSidePocket is HookTargetAccessControlKeyr
     /// @notice Thrown when a required value is zero.
     error ValueZero();
 
+    /// @notice Thrown when the caller is not tthe target Euler debt vault.
+    error NotTargetDebtVault(address caller, address targetDebtVaultAddr);
+
     /// @notice Thrown when withdrawal amount exceeds the user's allowed limit.
     /// @param amount The requested withdrawal amount.
     /// @param allowedAssetsForWithdrawal The maximum amount the user can withdraw.
@@ -107,6 +110,8 @@ contract HookTargetAccessControlKeyringSidePocket is HookTargetAccessControlKeyr
     /// @param amount The amount of assets to withdraw.
     /// @param owner The address whose balance will be debited.
     function withdraw(uint256 amount, address, address owner) external override {
+        if (msg.sender != address(targetDebtVault)) revert NotTargetDebtVault(msg.sender, address(targetDebtVault));
+
         if (sidePocketEnabled) _allowExit(owner, amount);
         _authenticateCallerAndAccount(owner);
     }
@@ -116,6 +121,8 @@ contract HookTargetAccessControlKeyringSidePocket is HookTargetAccessControlKeyr
     /// @param shares The number of vault shares to redeem.
     /// @param owner The address whose shares will be burned.
     function redeem(uint256 shares, address, address owner) external override {
+        if (msg.sender != address(targetDebtVault)) revert NotTargetDebtVault(msg.sender, address(targetDebtVault));
+
         uint256 amount = targetDebtVault.convertToAssets(shares);
         if (sidePocketEnabled) _allowExit(owner, amount);
         _authenticateCallerAndAccount(owner);
@@ -171,9 +178,9 @@ contract HookTargetAccessControlKeyringSidePocket is HookTargetAccessControlKeyr
 
         uint256 assetsSupplied = targetDebtVault.convertToAssets(targetDebtVault.balanceOf(user));
         uint256 totalWithdrawnAmount = userWithdrawnAmounts[user];
-        uint256 maxWithdrawableAssets = (
-            cumulativeWithdrawalLiquidityIndex.assetsAvailableForWithdrawal * (totalWithdrawnAmount + assetsSupplied)
-        ) / cumulativeWithdrawalLiquidityIndex.totalSuppliedAssets;
+        uint256 maxWithdrawableAssets =
+            (cumulativeWithdrawalLiquidityIndex.assetsAvailableForWithdrawal * (totalWithdrawnAmount + assetsSupplied))
+                / cumulativeWithdrawalLiquidityIndex.totalSuppliedAssets;
 
         return maxWithdrawableAssets - totalWithdrawnAmount;
     }
